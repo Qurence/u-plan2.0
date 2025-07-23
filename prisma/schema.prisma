@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Связи для next-auth
+  accounts      Account[]
+  sessions      Session[]
+
+  // Ваши связи
+  memberships   OrganizationMember[]
+  createdOrgs   Organization[]       @relation("OrganizationCreator")
+  cards         Card[]               @relation("CardAssignee")
+  comments      Comment[]
+  activities    Activity[]
+
+  @@map("users")
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Связи
+  creatorId   String
+  creator     User                   @relation("OrganizationCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members     OrganizationMember[]
+  boards      Board[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id     String @id @default(cuid())
+  role   Role   @default(MEMBER)
+
+  // Связи
+  userId         String
+  organizationId String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, organizationId])
+  @@map("organization_members")
+}
+
+model Board {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Связи
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lists          List[]
+  activities     Activity[]
+
+  @@map("boards")
+}
+
+model List {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Связи
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards   Card[]
+
+  @@map("lists")
+}
+
+model Card {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  order       Int
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Связи
+  listId     String
+  assigneeId String?
+  list       List      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  assignee   User?     @relation("CardAssignee", fields: [assigneeId], references: [id])
+  comments   Comment[]
+  activities Activity[]
+
+  @@map("cards")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Связи
+  cardId String
+  userId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  type      ActivityType
+  data      Json
+  createdAt DateTime     @default(now())
+
+  // Связи
+  userId  String
+  boardId String?
+  cardId  String?
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board   Board?  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  card    Card?   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? 
+  access_token       String? 
+  expires_at         Int?    
+  token_type         String? 
+  scope              String? 
+  id_token           String? 
+  session_state      String? 
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum ActivityType {
+  CARD_CREATED
+  CARD_UPDATED
+  CARD_MOVED
+  CARD_DELETED
+  COMMENT_ADDED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+}
