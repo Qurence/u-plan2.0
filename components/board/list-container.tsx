@@ -88,8 +88,11 @@ export const ListContainer = ({ list, boardId, onCardCreated, activeCardId, hove
   if (isDragging) {
     return (
       <div
-        className="opacity-0 bg-muted border-2 border-dashed border-muted-foreground/25 w-[272px] h-[200px] rounded-md"
-        style={overlayHeight ? { height: overlayHeight } : {}}
+        className="w-[272px]"
+        style={{
+          height: overlayHeight ? overlayHeight : undefined,
+          visibility: "hidden",
+        }}
         ref={setNodeRef}
       />
     )
