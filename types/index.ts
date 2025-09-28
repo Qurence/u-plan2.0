@@ -17,6 +17,13 @@ export type CardWithDetails = Card & {
   comments: (Comment & {
     user: User
   })[]
+  tags?: Array<{
+    tag: {
+      id: string
+      name: string
+      color: string
+    }
+  }>
 }
 
 export type OrganizationWithMembers = Organization & {

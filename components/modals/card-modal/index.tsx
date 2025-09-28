@@ -1,18 +1,39 @@
 "use client"
 
-import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import React, { useState } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Calendar, MessageSquare, User, X } from "lucide-react"
+import { Calendar, MessageSquare, User, X, Tag, Plus, Edit2, Trash2 } from "lucide-react"
 import { useCardModal } from "@/hooks/use-card-modal"
+import { useToast } from "@/hooks/use-toast"
+import { format } from "date-fns"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 export const CardModal = () => {
   const { isOpen, onClose, cardId } = useCardModal()
-  const [isEditing, setIsEditing] = useState(false)
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [isEditingDueDate, setIsEditingDueDate] = useState(false)
+  const [isCreatingTag, setIsCreatingTag] = useState(false)
+  const [isEditingTag, setIsEditingTag] = useState<string | null>(null)
+  
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [dueDate, setDueDate] = useState<Date | undefined>()
+  const [newTagName, setNewTagName] = useState("")
+  const [newTagColor, setNewTagColor] = useState("#3b82f6")
+  const [editingTagName, setEditingTagName] = useState("")
+  const [editingTagColor, setEditingTagColor] = useState("")
 
   const { data: card, isLoading } = useQuery({
     queryKey: ["card", cardId],
@@ -20,14 +41,285 @@ export const CardModal = () => {
     enabled: !!cardId && isOpen,
   })
 
+  const { data: tags } = useQuery({
+    queryKey: ["tags", card?.list?.board?.organizationId],
+    queryFn: () => 
+      fetch(`/api/tags?organizationId=${card?.list?.board?.organizationId}`).then((res) => res.json()),
+    enabled: !!card?.list?.board?.organizationId,
+  })
+
+  // Мутации для обновления карточки
+  const updateCardMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch(`/api/cards/${cardId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update card")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
+      toast({ title: "Карточка обновлена" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Не удалось обновить карточку",
+        variant: "destructive"
+      })
+    },
+  })
+
+  // Мутация для создания тега
+  const createTagMutation = useMutation({
+    mutationFn: async (data: { name: string; color: string; organizationId: string }) => {
+      const response = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to create tag")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags", card?.list?.board?.organizationId] })
+      setNewTagName("")
+      setNewTagColor("#3b82f6")
+      setIsCreatingTag(false)
+      toast({ title: "Тег создан" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Не удалось создать тег",
+        variant: "destructive"
+      })
+    },
+  })
+
+  // Мутация для обновления тега
+  const updateTagMutation = useMutation({
+    mutationFn: async ({ tagId, name, color }: { tagId: string; name: string; color: string }) => {
+      const response = await fetch(`/api/tags/${tagId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, color }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update tag")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags", card?.list?.board?.organizationId] })
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
+      setIsEditingTag(null)
+      toast({ title: "Тег обновлен" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Не удалось обновить тег",
+        variant: "destructive"
+      })
+    },
+  })
+
+  // Мутация для удаления тега
+  const deleteTagMutation = useMutation({
+    mutationFn: async (tagId: string) => {
+      const response = await fetch(`/api/tags/${tagId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to delete tag")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags", card?.list?.board?.organizationId] })
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
+      toast({ title: "Тег удален" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Не удалось удалить тег",
+        variant: "destructive"
+      })
+    },
+  })
+
+  // Мутация для добавления тега к карточке
+  const addTagToCardMutation = useMutation({
+    mutationFn: async (tagId: string) => {
+      const response = await fetch(`/api/cards/${cardId}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tagId }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to add tag to card")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
+      toast({ title: "Тег добавлен к карточке" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Не удалось добавить тег к карточке",
+        variant: "destructive"
+      })
+    },
+  })
+
+  // Мутация для удаления тега с карточки
+  const removeTagFromCardMutation = useMutation({
+    mutationFn: async (tagId: string) => {
+      const response = await fetch(`/api/cards/${cardId}/tags?tagId=${tagId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to remove tag from card")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
+      toast({ title: "Тег удален с карточки" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Не удалось удалить тег с карточки",
+        variant: "destructive"
+      })
+    },
+  })
+
+  // Инициализация данных при загрузке карточки
+  React.useEffect(() => {
+    if (card) {
+      setTitle(card.title || "")
+      setDescription(card.description || "")
+      setDueDate(card.dueDate ? new Date(card.dueDate) : undefined)
+    }
+  }, [card])
+
+  const handleSaveTitle = () => {
+    if (title.trim()) {
+      updateCardMutation.mutate({ title: title.trim() })
+      setIsEditingTitle(false)
+    }
+  }
+
+  const handleSaveDescription = () => {
+    updateCardMutation.mutate({ description: description.trim() })
+    setIsEditingDescription(false)
+  }
+
+  const handleSaveDueDate = () => {
+    updateCardMutation.mutate({ dueDate: dueDate?.toISOString() })
+    setIsEditingDueDate(false)
+  }
+
+  const handleCreateTag = () => {
+    if (newTagName.trim() && card?.list?.board?.organizationId) {
+      createTagMutation.mutate({
+        name: newTagName.trim(),
+        color: newTagColor,
+        organizationId: card.list.board.organizationId,
+      })
+    }
+  }
+
+  const handleUpdateTag = (tagId: string) => {
+    if (editingTagName.trim()) {
+      updateTagMutation.mutate({
+        tagId,
+        name: editingTagName.trim(),
+        color: editingTagColor,
+      })
+    }
+  }
+
+  const handleDeleteTag = (tagId: string) => {
+    deleteTagMutation.mutate(tagId)
+  }
+
+  const handleAddTagToCard = (tagId: string) => {
+    addTagToCardMutation.mutate(tagId)
+  }
+
+  const handleRemoveTagFromCard = (tagId: string) => {
+    removeTagFromCardMutation.mutate(tagId)
+  }
+
+  const startEditingTag = (tag: any) => {
+    setEditingTagName(tag.name)
+    setEditingTagColor(tag.color)
+    setIsEditingTag(tag.id)
+  }
+
   if (!isOpen || !cardId) return null
+
+  const cardTags = card?.tags?.map((ct: any) => ct.tag) || []
+  const availableTags = tags?.filter((tag: any) => 
+    !cardTags.some((cardTag: any) => cardTag.id === tag.id)
+  ) || []
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between">
-            <DialogTitle className="text-xl font-semibold">{card?.title || "Loading..."}</DialogTitle>
+            {isEditingTitle ? (
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="text-xl font-semibold"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveTitle}>
+                    Сохранить
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      setIsEditingTitle(false)
+                      setTitle(card?.title || "")
+                    }}
+                  >
+                    Отмена
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <DialogTitle 
+                className="text-xl font-semibold cursor-pointer hover:bg-muted p-2 rounded-md"
+                onClick={() => setIsEditingTitle(true)}
+              >
+                {card?.title || "Loading..."}
+              </DialogTitle>
+            )}
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
@@ -41,42 +333,280 @@ export const CardModal = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Description */}
+            {/* Теги карточки */}
+            <div className="space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Теги
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {cardTags.map((tag: any) => (
+                  <div key={tag.id} className="flex items-center gap-1">
+                    <Badge 
+                      style={{ backgroundColor: tag.color, color: "white" }}
+                      className="cursor-pointer"
+                    >
+                      {tag.name}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => handleRemoveTagFromCard(tag.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+                {availableTags.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-6">
+                        <Plus className="h-3 w-3 mr-1" />
+                        Добавить тег
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64">
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Добавить тег</h4>
+                        <div className="space-y-2">
+                          {availableTags.map((tag: any) => (
+                            <div key={tag.id} className="flex items-center justify-between">
+                              <Badge style={{ backgroundColor: tag.color, color: "white" }}>
+                                {tag.name}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAddTagToCard(tag.id)}
+                              >
+                                Добавить
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+            </div>
+
+            {/* Управление тегами */}
+            <div className="space-y-2">
+              <h4 className="font-medium">Управление тегами</h4>
+              <div className="space-y-2">
+                {isCreatingTag ? (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Название тега"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="color"
+                      value={newTagColor}
+                      onChange={(e) => setNewTagColor(e.target.value)}
+                      className="w-12 h-10"
+                    />
+                    <Button onClick={handleCreateTag} disabled={!newTagName.trim()}>
+                      Создать
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        setIsCreatingTag(false)
+                        setNewTagName("")
+                        setNewTagColor("#3b82f6")
+                      }}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsCreatingTag(true)}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Создать новый тег
+                  </Button>
+                )}
+              </div>
+
+              {/* Список существующих тегов */}
+              <div className="space-y-2">
+                {tags?.map((tag: any) => (
+                  <div key={tag.id} className="flex items-center justify-between p-2 border rounded">
+                    {isEditingTag === tag.id ? (
+                      <div className="flex gap-2 flex-1">
+                        <Input
+                          value={editingTagName}
+                          onChange={(e) => setEditingTagName(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input
+                          type="color"
+                          value={editingTagColor}
+                          onChange={(e) => setEditingTagColor(e.target.value)}
+                          className="w-12 h-10"
+                        />
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleUpdateTag(tag.id)}
+                          disabled={!editingTagName.trim()}
+                        >
+                          Сохранить
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setIsEditingTag(null)}
+                        >
+                          Отмена
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Badge style={{ backgroundColor: tag.color, color: "white" }}>
+                            {tag.name}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditingTag(tag)}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTag(tag.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Описание */}
             <div className="space-y-2">
               <h4 className="font-medium flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
-                Description
+                Описание
               </h4>
-              {isEditing ? (
+              {isEditingDescription ? (
                 <div className="space-y-2">
                   <Textarea
-                    defaultValue={card?.description || ""}
-                    placeholder="Add a description..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Добавьте описание..."
                     className="min-h-[100px]"
                   />
                   <div className="flex gap-2">
-                    <Button size="sm">Save</Button>
-                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
-                      Cancel
+                    <Button size="sm" onClick={handleSaveDescription}>
+                      Сохранить
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => {
+                        setIsEditingDescription(false)
+                        setDescription(card?.description || "")
+                      }}
+                    >
+                      Отмена
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div
                   className="text-sm text-muted-foreground cursor-pointer hover:bg-muted p-2 rounded-md min-h-[60px]"
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => setIsEditingDescription(true)}
                 >
-                  {card?.description || "Add a description..."}
+                  {card?.description || "Добавьте описание..."}
                 </div>
               )}
             </div>
 
-            {/* Assignee */}
+            {/* Срок выполнения */}
+            <div className="space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Срок выполнения
+              </h4>
+              {isEditingDueDate ? (
+                <div className="space-y-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !dueDate && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {dueDate ? format(dueDate, "PPP") : "Выберите дату"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dueDate}
+                        onSelect={setDueDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSaveDueDate}>
+                      Сохранить
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => {
+                        setIsEditingDueDate(false)
+                        setDueDate(card?.dueDate ? new Date(card.dueDate) : undefined)
+                      }}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="cursor-pointer hover:bg-muted p-2 rounded-md"
+                  onClick={() => setIsEditingDueDate(true)}
+                >
+                  {card?.dueDate ? (
+                    <Badge variant="outline">
+                      {format(new Date(card.dueDate), "PPP")}
+                    </Badge>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      Добавьте срок выполнения...
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Исполнитель */}
             {card?.assignee && (
               <div className="space-y-2">
                 <h4 className="font-medium flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  Assigned to
+                  Исполнитель
                 </h4>
                 <div className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
@@ -88,20 +618,9 @@ export const CardModal = () => {
               </div>
             )}
 
-            {/* Due Date */}
-            {card?.dueDate && (
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Due Date
-                </h4>
-                <Badge variant="outline">{new Date(card.dueDate).toLocaleDateString()}</Badge>
-              </div>
-            )}
-
-            {/* Comments */}
+            {/* Комментарии */}
             <div className="space-y-4">
-              <h4 className="font-medium">Comments</h4>
+              <h4 className="font-medium">Комментарии</h4>
               <div className="space-y-3">
                 {card?.comments?.map((comment: any) => (
                   <div key={comment.id} className="flex gap-3">
@@ -122,14 +641,14 @@ export const CardModal = () => {
                 ))}
               </div>
 
-              {/* Add Comment */}
+              {/* Добавить комментарий */}
               <div className="flex gap-3">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback>U</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-2">
-                  <Textarea placeholder="Write a comment..." />
-                  <Button size="sm">Add Comment</Button>
+                  <Textarea placeholder="Напишите комментарий..." />
+                  <Button size="sm">Добавить комментарий</Button>
                 </div>
               </div>
             </div>

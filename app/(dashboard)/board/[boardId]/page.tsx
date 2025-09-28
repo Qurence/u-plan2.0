@@ -35,6 +35,11 @@ export default async function BoardPage({ params }: BoardPageProps) {
           cards: {
             include: {
               assignee: true,
+              tags: {
+                include: {
+                  tag: true,
+                },
+              },
             },
             orderBy: {
               order: "asc",
