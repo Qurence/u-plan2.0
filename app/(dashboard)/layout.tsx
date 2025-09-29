@@ -19,9 +19,7 @@ export default function DashboardLayout({
         <SocketProvider>
           <div className="h-full">
             <div className="flex h-full">
-              <div className="w-64 h-full">
-                <Sidebar />
-              </div>
+              <Sidebar />
               <main className="flex-1 h-full overflow-y-auto">{children}</main>
             </div>
             <ModalProvider />

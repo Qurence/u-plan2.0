@@ -13,7 +13,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Settings, User } from "lucide-react"
 
-export const UserButton = () => {
+interface UserButtonProps {
+  showText?: boolean;
+}
+
+export const UserButton = ({ showText = true }: UserButtonProps) => {
   const { data: session } = useSession()
 
   if (!session?.user) return null
@@ -21,15 +25,17 @@ export const UserButton = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-full justify-start">
-          <Avatar className="h-8 w-8 mr-2">
+        <Button variant="ghost" className={`relative h-10 ${showText ? 'w-full justify-start' : 'w-10 p-0'}`}>
+          <Avatar className={`h-8 w-8 ${showText ? 'mr-2' : ''}`}>
             <AvatarImage src={session.user.image || "/placeholder.svg"} alt={session.user.name || ""} />
             <AvatarFallback>{session.user.name?.[0]?.toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col items-start">
-            <p className="text-sm font-medium leading-none">{session.user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
-          </div>
+          {showText && (
+            <div className="flex flex-col items-start">
+              <p className="text-sm font-medium leading-none">{session.user.name}</p>
+              <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+            </div>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
