@@ -13,7 +13,7 @@ interface BoardNavbarProps {
 
 export const BoardNavbar = ({ board }: BoardNavbarProps) => {
   return (
-    <div className="w-full h-14 z-40 bg-black/50 fixed top-14 flex items-center px-6 gap-x-4 text-white">
+    <div className="w-full h-14 z-40 bg-black/50 fixed top-2 flex items-center px-6 gap-x-4 text-white">
       <Link href={`/organization/${board.organizationId}`}>
         <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
           <ArrowLeft className="h-4 w-4 mr-2" />

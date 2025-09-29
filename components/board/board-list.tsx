@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import React, { useRef } from "react"
+import { TrashZone } from "./trash-zone"
 
 interface BoardListProps {
   boardId: string
@@ -72,6 +73,14 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over, active } = event
+    
+    // Если карточка над корзиной, не обрабатываем другие зоны
+    if (active.data.current?.type === "card" && over?.id === 'trash-zone') {
+      setHoveredListId(null)
+      setOverCardId(null)
+      return
+    }
+    
     if (active.data.current?.type === "card") {
       if (over?.data.current?.type === "list") {
         setHoveredListId(over.id as string)
@@ -92,15 +101,49 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    const cardId = active.data.current?.type === "card" ? (active.id as string) : undefined;
+    const overId = over?.id as string | undefined;
+
+    // Проверяем, была ли карточка брошена в корзину
+    if (active.data.current?.type === "card" && over?.id === 'trash-zone') {
+      setActiveCard(null)
+      setHoveredListId(null)
+      setOverCardId(null)
+      
+      // Удаляем карточку из списка
+      const activeListIndex = lists.findIndex((list) => list.cards.find((card) => card.id === cardId))
+      if (activeListIndex !== -1) {
+        const newLists = lists.map((list, idx) => {
+          if (idx === activeListIndex) {
+            return { ...list, cards: list.cards.filter(card => card.id !== cardId) }
+          }
+          return list
+        })
+        setLists(newLists)
+        
+        // Удаляем карточку на сервере
+        try {
+          await fetch(`/api/cards/${cardId}`, {
+            method: "DELETE",
+          })
+          toast.success("Карточка удалена")
+        } catch (error) {
+          console.error("Failed to delete card:", error)
+          toast.error("Не удалось удалить карточку")
+          // Откатываем изменения
+          if (prevLists) setLists(prevLists)
+        }
+      }
+      setPrevLists(null)
+      return
+    }
+
     setActiveCard(null)
     setHoveredListId(null)
     setOverCardId(null)
     setActiveList(null)
     setActiveListHeight(undefined)
-
-    const { active, over } = event
-    const cardId = active.data.current?.type === "card" ? (active.id as string) : undefined;
-    const overId = over?.id as string | undefined;
 
     if (!over && prevLists) {
       setLists(prevLists)
@@ -315,56 +358,62 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4 pl-4 items-start">
-        <SortableContext items={lists.map((list) => list.id)} strategy={horizontalListSortingStrategy}>
-          {lists.map((list) => (
-            <div
-              key={list.id}
-              ref={el => { listRefs.current[list.id] = el; return undefined; }}
-              style={{ display: "flex" }}
-            >
-              <ListContainer
-                list={list}
-                boardId={boardId}
-                activeCardId={activeCard?.id}
-                hoveredListId={hoveredListId || undefined}
-                overCardId={overCardId || undefined}
-                onCardCreated={(card) => {
-                  setLists(prev => prev.map(l => l.id === list.id ? { ...l, cards: [...l.cards, card] } : l))
-                }}
-                isOverlay={false}
-                overlayHeight={undefined}
-              />
-            </div>
-          ))}
-        </SortableContext>
-        {/* --- UI для создания нового списка --- */}
-        <div className="w-[272px] shrink-0">
-          {isAddingList ? (
-            <form onSubmit={handleCreateList} className="bg-muted/50 backdrop-blur-sm rounded-md p-4 flex flex-col gap-2">
-              <Input
-                value={newListTitle}
-                onChange={e => setNewListTitle(e.target.value)}
-                placeholder="Название списка"
-                autoFocus
-                disabled={isCreatingList}
-              />
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" size="sm" onClick={() => { setIsAddingList(false); setNewListTitle("") }} disabled={isCreatingList}>Отмена</Button>
-                <Button type="submit" size="sm" disabled={isCreatingList || !newListTitle.trim()}>{isCreatingList ? "Создание..." : "Создать"}</Button>
+      <>
+        <div className="relative flex gap-4 overflow-x-auto pb-4 pl-4 items-start h-[100vh]">
+          <SortableContext items={lists.map((list) => list.id)} strategy={horizontalListSortingStrategy}>
+            {lists.map((list) => (
+              <div
+                key={list.id}
+                ref={el => { listRefs.current[list.id] = el; return undefined; }}
+                style={{ display: "flex" }}
+              >
+                <ListContainer
+                  list={list}
+                  boardId={boardId}
+                  activeCardId={activeCard?.id}
+                  hoveredListId={hoveredListId || undefined}
+                  overCardId={overCardId || undefined}
+                  onCardCreated={(card) => {
+                    setLists(prev => prev.map(l => l.id === list.id ? { ...l, cards: [...l.cards, card] } : l))
+                  }}
+                  isOverlay={false}
+                  overlayHeight={undefined}
+                />
               </div>
-            </form>
-          ) : (
-            <Button variant="ghost" className="w-full min-h-[56px] justify-start text-muted-foreground bg-muted/50 hover:text-foreground hover:bg-muted/70" onClick={() => setIsAddingList(true)}>
-              <span className="mr-2">+</span> Новый список
-            </Button>
-          )}
+            ))}
+          </SortableContext>
+          {/* --- UI для создания нового списка --- */}
+          <div className="w-[272px] shrink-0">
+            {isAddingList ? (
+              <form onSubmit={handleCreateList} className="bg-muted/50 backdrop-blur-sm rounded-md p-4 flex flex-col gap-2">
+                <Input
+                  value={newListTitle}
+                  onChange={e => setNewListTitle(e.target.value)}
+                  placeholder="Название списка"
+                  autoFocus
+                  disabled={isCreatingList}
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setIsAddingList(false); setNewListTitle("") }} disabled={isCreatingList}>Отмена</Button>
+                  <Button type="submit" size="sm" disabled={isCreatingList || !newListTitle.trim()}>{isCreatingList ? "Создание..." : "Создать"}</Button>
+                </div>
+              </form>
+            ) : (
+              <Button variant="ghost" className="w-full min-h-[56px] justify-start text-muted-foreground bg-muted/50 hover:text-foreground hover:bg-muted/70" onClick={() => setIsAddingList(true)}>
+                <span className="mr-2">+</span> Новый список
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-      <DragOverlay>
-        {activeCard && <CardItem card={activeCard} />}
-        {activeList && <ListContainer list={activeList} boardId={boardId} isOverlay={true} hoveredListId={hoveredListId || undefined} overlayHeight={activeListHeight} />}
-      </DragOverlay>
+        
+        {/* Зона удаления - появляется только при перетаскивании карточки */}
+        {activeCard && <TrashZone />}
+        
+        <DragOverlay>
+          {activeCard && <CardItem card={activeCard} />}
+          {activeList && <ListContainer list={activeList} boardId={boardId} isOverlay={true} hoveredListId={hoveredListId || undefined} overlayHeight={activeListHeight} />}
+        </DragOverlay>
+      </>
     </DndContext>
   )
 }

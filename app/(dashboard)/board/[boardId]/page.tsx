@@ -70,7 +70,7 @@ export default async function BoardPage({ params }: BoardPageProps) {
     >
       <div className="absolute inset-0 bg-black/20" />
       <BoardNavbar board={board} />
-      <div className="relative pt-32">
+      <div className="relative pt-24">
         <BoardList boardId={board.id} lists={board.lists} />
       </div>
     </div>

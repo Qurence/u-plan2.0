@@ -34,6 +34,9 @@ export const CardModal = () => {
   const [newTagColor, setNewTagColor] = useState("#3b82f6")
   const [editingTagName, setEditingTagName] = useState("")
   const [editingTagColor, setEditingTagColor] = useState("")
+  const [newComment, setNewComment] = useState("")
+  const [isAddingComment, setIsAddingComment] = useState(false)
+  const [dueTime, setDueTime] = useState("12:00")
 
   const { data: card, isLoading } = useQuery({
     queryKey: ["card", cardId],
@@ -212,12 +215,76 @@ export const CardModal = () => {
     },
   })
 
+  // Мутация для добавления комментария
+  const addCommentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await fetch(`/api/cards/${cardId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to add comment")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
+      setNewComment("")
+      setIsAddingComment(false)
+      toast({ title: "Комментарий добавлен" })
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Не удалось добавить комментарий",
+        variant: "destructive"
+      })
+      setIsAddingComment(false)
+    },
+  })
+
+  // Мутация для удаления карточки
+  const deleteCardMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/cards/${cardId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to delete card")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      toast({ title: "Карточка удалена" })
+      onClose()
+      // Перезагружаем страницу для обновления списка карточек
+      window.location.reload()
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message || "Не удалось удалить карточку",
+        variant: "destructive"
+      })
+    },
+  })
+
   // Инициализация данных при загрузке карточки
   React.useEffect(() => {
     if (card) {
       setTitle(card.title || "")
       setDescription(card.description || "")
-      setDueDate(card.dueDate ? new Date(card.dueDate) : undefined)
+      if (card.dueDate) {
+        const date = new Date(card.dueDate)
+        setDueDate(date)
+        setDueTime(`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`)
+      } else {
+        setDueDate(undefined)
+        setDueTime("12:00")
+      }
     }
   }, [card])
 
@@ -234,7 +301,14 @@ export const CardModal = () => {
   }
 
   const handleSaveDueDate = () => {
-    updateCardMutation.mutate({ dueDate: dueDate?.toISOString() })
+    if (dueDate) {
+      const [hours, minutes] = dueTime.split(':').map(Number)
+      const dateWithTime = new Date(dueDate)
+      dateWithTime.setHours(hours, minutes, 0, 0)
+      updateCardMutation.mutate({ dueDate: dateWithTime.toISOString() })
+    } else {
+      updateCardMutation.mutate({ dueDate: null })
+    }
     setIsEditingDueDate(false)
   }
 
@@ -268,6 +342,19 @@ export const CardModal = () => {
 
   const handleRemoveTagFromCard = (tagId: string) => {
     removeTagFromCardMutation.mutate(tagId)
+  }
+
+  const handleAddComment = () => {
+    if (newComment.trim()) {
+      setIsAddingComment(true)
+      addCommentMutation.mutate(newComment.trim())
+    }
+  }
+
+  const handleDeleteCard = () => {
+    if (confirm("Вы уверены, что хотите удалить эту карточку?")) {
+      deleteCardMutation.mutate()
+    }
   }
 
   const startEditingTag = (tag: any) => {
@@ -320,9 +407,19 @@ export const CardModal = () => {
                 {card?.title || "Loading..."}
               </DialogTitle>
             )}
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleDeleteCard}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -473,6 +570,15 @@ export const CardModal = () => {
                       />
                     </PopoverContent>
                   </Popover>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Время:</label>
+                    <Input
+                      type="time"
+                      value={dueTime}
+                      onChange={(e) => setDueTime(e.target.value)}
+                      className="w-32"
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleSaveDueDate}>
                       Сохранить
@@ -482,7 +588,14 @@ export const CardModal = () => {
                       size="sm" 
                       onClick={() => {
                         setIsEditingDueDate(false)
-                        setDueDate(card?.dueDate ? new Date(card.dueDate) : undefined)
+                        if (card?.dueDate) {
+                          const date = new Date(card.dueDate)
+                          setDueDate(date)
+                          setDueTime(`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`)
+                        } else {
+                          setDueDate(undefined)
+                          setDueTime("12:00")
+                        }
                       }}
                     >
                       Отмена
@@ -495,8 +608,12 @@ export const CardModal = () => {
                   onClick={() => setIsEditingDueDate(true)}
                 >
                   {card?.dueDate ? (
-                    <Badge variant="outline">
-                      {format(new Date(card.dueDate), "PPP")}
+                    <Badge 
+                      variant="outline" 
+                      suppressHydrationWarning
+                      className={new Date(card.dueDate) < new Date() ? 'border-red-600 text-red-600' : ''}
+                    >
+                      До: {format(new Date(card.dueDate), "PPP p")}
                     </Badge>
                   ) : (
                     <span className="text-sm text-muted-foreground">
@@ -537,8 +654,8 @@ export const CardModal = () => {
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{comment.user.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(comment.createdAt).toLocaleDateString()}
+                        <span className="text-xs text-muted-foreground" suppressHydrationWarning>
+                          {format(new Date(comment.createdAt), "PPP")}
                         </span>
                       </div>
                       <p className="text-sm">{comment.content}</p>
@@ -553,8 +670,19 @@ export const CardModal = () => {
                   <AvatarFallback>U</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-2">
-                  <Textarea placeholder="Напишите комментарий..." />
-                  <Button size="sm">Добавить комментарий</Button>
+                  <Textarea 
+                    placeholder="Напишите комментарий..." 
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    disabled={isAddingComment}
+                  />
+                  <Button 
+                    size="sm" 
+                    onClick={handleAddComment}
+                    disabled={isAddingComment || !newComment.trim()}
+                  >
+                    {isAddingComment ? "Добавление..." : "Добавить комментарий"}
+                  </Button>
                 </div>
               </div>
             </div>

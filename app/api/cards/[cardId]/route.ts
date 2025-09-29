@@ -9,7 +9,8 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    const userId = (session?.user as any)?.id
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -51,7 +52,7 @@ export async function GET(
     // Проверяем доступ к карточке через организацию
     const hasAccess = await db.organizationMember.findFirst({
       where: {
-        userId: session.user.id,
+        userId: userId,
         organizationId: card.list.board.organizationId,
       },
     })
@@ -76,7 +77,8 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    const userId = (session?.user as any)?.id
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -105,7 +107,7 @@ export async function PATCH(
 
     const hasAccess = await db.organizationMember.findFirst({
       where: {
-        userId: session.user.id,
+        userId: userId,
         organizationId: card.list.board.organizationId,
       },
     })
@@ -143,6 +145,63 @@ export async function PATCH(
     return NextResponse.json(updatedCard)
   } catch (error) {
     console.error("Error updating card:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { cardId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    const userId = (session?.user as any)?.id
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Проверяем доступ к карточке
+    const card = await db.card.findUnique({
+      where: { id: params.cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                organization: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!card) {
+      return NextResponse.json({ error: "Card not found" }, { status: 404 })
+    }
+
+    const hasAccess = await db.organizationMember.findFirst({
+      where: {
+        userId: userId,
+        organizationId: card.list.board.organizationId,
+      },
+    })
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    }
+
+    // Удаляем карточку
+    await db.card.delete({
+      where: { id: params.cardId },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting card:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

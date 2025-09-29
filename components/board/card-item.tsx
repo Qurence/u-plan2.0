@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import type { Card } from "@prisma/client"
@@ -21,6 +22,8 @@ interface CardItemProps {
 }
 
 export const CardItem = ({ card, isDragging }: CardItemProps) => {
+  const [tagsExpanded, setTagsExpanded] = useState(false)
+  
   const { attributes, listeners, setNodeRef, transform, transition, isDragging: dndIsDragging, isOver } = useSortable({
     id: card.id,
     data: {
@@ -36,6 +39,11 @@ export const CardItem = ({ card, isDragging }: CardItemProps) => {
 
   const cardModal = useCardModal()
 
+  const handleTagClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setTagsExpanded(!tagsExpanded)
+  }
+
   return (
     <UICard
       ref={setNodeRef}
@@ -46,32 +54,45 @@ export const CardItem = ({ card, isDragging }: CardItemProps) => {
       onClick={() => cardModal.onOpen(card.id)}
     >
       <div className="space-y-2">
-        <h4 className="text-sm font-medium">{card.title}</h4>
-        {card.description && <p className="text-xs text-muted-foreground line-clamp-2">{card.description}</p>}
-        
-        {/* Теги */}
+        {/* Теги - в самом верху */}
         {card.tags && card.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {card.tags.slice(0, 3).map((cardTag) => (
-              <Badge
-                key={cardTag.tag.id}
-                style={{ backgroundColor: cardTag.tag.color, color: "white" }}
-                className="text-xs px-1.5 py-0.5"
-              >
-                {cardTag.tag.name}
-              </Badge>
-            ))}
-            {card.tags.length > 3 && (
-              <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                +{card.tags.length - 3}
-              </Badge>
+          <div 
+            className="flex flex-wrap gap-1 cursor-pointer"
+            onClick={handleTagClick}
+          >
+            {tagsExpanded ? (
+              // Развёрнутый вид с названиями
+              card.tags.map((cardTag) => (
+                <Badge
+                  key={cardTag.tag.id}
+                  style={{ backgroundColor: cardTag.tag.color, color: "white" }}
+                  className="text-xs px-2 py-0.5"
+                >
+                  {cardTag.tag.name}
+                </Badge>
+              ))
+            ) : (
+              // Компактный вид - узкие полоски без текста
+              card.tags.map((cardTag) => (
+                <div
+                  key={cardTag.tag.id}
+                  style={{ backgroundColor: cardTag.tag.color }}
+                  className="h-2 w-8 rounded-full"
+                  title={cardTag.tag.name}
+                />
+              ))
             )}
           </div>
         )}
         
+        <h4 className="text-sm font-medium">{card.title}</h4>
+        
         {card.dueDate && (
-          <div className="text-xs text-orange-600 dark:text-orange-400">
-            Due: {new Date(card.dueDate).toLocaleDateString()}
+          <div 
+            className={`text-xs ${new Date(card.dueDate) < new Date() ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-muted-foreground'}`}
+            suppressHydrationWarning
+          >
+            До: {new Date(card.dueDate).toLocaleDateString()}
           </div>
         )}
       </div>
