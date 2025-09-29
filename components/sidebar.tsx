@@ -26,9 +26,46 @@ export const Sidebar = () => {
         setOrganizations(data)
 
         // Set current org based on pathname
-        const orgId = pathname.split("/")[2]
-        const current = data.find((org: OrganizationWithMembers) => org.id === orgId)
-        setCurrentOrg(current || data[0] || null)
+        const pathParts = pathname.split("/")
+        
+        // Если путь содержит board/[boardId]
+        if (pathParts[1] === "board") {
+          const boardId = pathParts[2]
+          if (boardId) {
+            // Получаем информацию о доске, чтобы узнать к какой организации она принадлежит
+            try {
+              const boardResponse = await fetch(`/api/boards/${boardId}`)
+              if (boardResponse.ok) {
+                const boardData = await boardResponse.json()
+                const organizationId = boardData.organizationId
+                
+                // Находим организацию по ID из данных доски
+                const current = data.find((org: OrganizationWithMembers) => org.id === organizationId)
+                if (current) {
+                  setCurrentOrg(current)
+                  return
+                }
+              }
+            } catch (boardError) {
+              console.error("Failed to fetch board data:", boardError)
+            }
+          }
+        }
+        
+        // Если это путь organization/[orgId]
+        if (pathParts[1] === "organization") {
+          const orgId = pathParts[2]
+          if (orgId) {
+            const current = data.find((org: OrganizationWithMembers) => org.id === orgId)
+            if (current) {
+              setCurrentOrg(current)
+              return
+            }
+          }
+        }
+        
+        // Если не нашли организацию по URL или URL не содержит ID организации
+        setCurrentOrg(data[0] || null)
       } catch (error) {
         console.error("Failed to fetch organizations:", error)
       }

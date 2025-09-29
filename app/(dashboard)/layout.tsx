@@ -17,10 +17,10 @@ export default function DashboardLayout({
     <CustomSessionProvider>
       <QueryProvider>
         <SocketProvider>
-          <div className="h-full">
-            <div className="flex h-full">
+          <div className="h-screen flex flex-col">
+            <div className="flex flex-1 overflow-hidden">
               <Sidebar />
-              <main className="flex-1 h-full overflow-y-auto">{children}</main>
+              <main className="flex-1 overflow-y-auto">{children}</main>
             </div>
             <ModalProvider />
           </div>

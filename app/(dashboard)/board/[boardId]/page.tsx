@@ -14,7 +14,10 @@ interface BoardPageProps {
 export default async function BoardPage({ params }: BoardPageProps) {
   const session = await getServerSession(authOptions)
 
-  if (!session?.user?.id) {
+  // Кастинг session.user к any для доступа к id
+  const userId = (session?.user as any)?.id
+
+  if (!userId) {
     redirect("/sign-in")
   }
 
@@ -24,7 +27,7 @@ export default async function BoardPage({ params }: BoardPageProps) {
       organization: {
         members: {
           some: {
-            userId: session.user.id,
+            userId: userId,
           },
         },
       },
