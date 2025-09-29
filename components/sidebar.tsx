@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { OrganizationSwitcher } from "@/components/organization/organization-switcher"
 import { UserButton } from "@/components/auth/user-button"
-import { Plus, Settings, Users } from "lucide-react"
+import { Plus, Settings, Users, Tag } from "lucide-react"
 import type { OrganizationWithMembers } from "@/types"
 
 export const Sidebar = () => {
@@ -73,6 +73,16 @@ export const Sidebar = () => {
               <Link href={currentOrg ? `/organization/${currentOrg.id}/members` : "/organization"}>
                 <Users className="mr-2 h-4 w-4" />
                 Members
+              </Link>
+            </Button>
+            <Button
+              variant={pathname.includes("/tags") ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              asChild
+            >
+              <Link href={currentOrg ? `/organization/${currentOrg.id}/tags` : "/organization"}>
+                <Tag className="mr-2 h-4 w-4" />
+                Tags
               </Link>
             </Button>
             <Button

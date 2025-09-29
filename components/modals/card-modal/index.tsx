@@ -391,111 +391,17 @@ export const CardModal = () => {
               </div>
             </div>
 
-            {/* Управление тегами */}
-            <div className="space-y-2">
-              <h4 className="font-medium">Управление тегами</h4>
-              <div className="space-y-2">
-                {isCreatingTag ? (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Название тега"
-                      value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Input
-                      type="color"
-                      value={newTagColor}
-                      onChange={(e) => setNewTagColor(e.target.value)}
-                      className="w-12 h-10"
-                    />
-                    <Button onClick={handleCreateTag} disabled={!newTagName.trim()}>
-                      Создать
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => {
-                        setIsCreatingTag(false)
-                        setNewTagName("")
-                        setNewTagColor("#3b82f6")
-                      }}
-                    >
-                      Отмена
-                    </Button>
-                  </div>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreatingTag(true)}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Создать новый тег
-                  </Button>
-                )}
+            {/* Управление тегами вынесено на отдельную страницу */}
+            {card?.list?.board?.organizationId && (
+              <div>
+                <a
+                  href={`/organization/${card.list.board.organizationId}/tags`}
+                  className="inline-flex items-center text-sm text-primary hover:underline"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Открыть управление тегами
+                </a>
               </div>
-
-              {/* Список существующих тегов */}
-              <div className="space-y-2">
-                {tags?.map((tag: any) => (
-                  <div key={tag.id} className="flex items-center justify-between p-2 border rounded">
-                    {isEditingTag === tag.id ? (
-                      <div className="flex gap-2 flex-1">
-                        <Input
-                          value={editingTagName}
-                          onChange={(e) => setEditingTagName(e.target.value)}
-                          className="flex-1"
-                        />
-                        <Input
-                          type="color"
-                          value={editingTagColor}
-                          onChange={(e) => setEditingTagColor(e.target.value)}
-                          className="w-12 h-10"
-                        />
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleUpdateTag(tag.id)}
-                          disabled={!editingTagName.trim()}
-                        >
-                          Сохранить
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setIsEditingTag(null)}
-                        >
-                          Отмена
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <Badge style={{ backgroundColor: tag.color, color: "white" }}>
-                            {tag.name}
-                          </Badge>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => startEditingTag(tag)}
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTag(tag.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Описание */}
             <div className="space-y-2">
