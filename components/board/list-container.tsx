@@ -18,13 +18,15 @@ interface ListContainerProps {
   boardId: string
   onCardCreated?: (card: any) => void
   activeCardId?: string
+  activeCardHeight?: number
   hoveredListId?: string
   overCardId?: string
-  isOverlay?: boolean // добавил проп
-  overlayHeight?: number // высота для overlay/placeholder
+  isOverlay?: boolean
+  overlayHeight?: number
+  onCardRefChange?: (cardId: string, ref: HTMLDivElement | null) => void
 }
 
-export const ListContainer = ({ list, boardId, onCardCreated, activeCardId, hoveredListId, overCardId, isOverlay, overlayHeight }: ListContainerProps) => {
+export const ListContainer = ({ list, boardId, onCardCreated, activeCardId, activeCardHeight, hoveredListId, overCardId, isOverlay, overlayHeight, onCardRefChange }: ListContainerProps) => {
   const [isAddingCard, setIsAddingCard] = useState(false)
   const [cardTitle, setCardTitle] = useState("")
   const localRef = useRef<HTMLDivElement>(null)
@@ -113,15 +115,23 @@ export const ListContainer = ({ list, boardId, onCardCreated, activeCardId, hove
         {list.cards.map((card) => (
           <React.Fragment key={card.id}>
             {overCardId === card.id && activeCardId !== card.id && (
-              <div className="bg-muted border-2 border-dashed border-muted-foreground/10 rounded-md mb-2 min-h-[48px]" />
+              <div 
+                className="bg-muted border-2 border-dashed border-muted-foreground/10 rounded-md mb-2" 
+                style={{ height: activeCardHeight ? `${activeCardHeight}px` : '48px' }}
+              />
             )}
-            <CardItem card={card} isDragging={activeCardId === card.id} />
+            <div ref={(el) => onCardRefChange?.(card.id, el)}>
+              <CardItem card={card} isDragging={activeCardId === card.id} />
+            </div>
           </React.Fragment>
         ))}
         {/* Placeholder для dnd: показываем если сейчас над этим списком (в конец), только если overCardId не совпадает ни с одной карточкой */}
         {activeCardId && hoveredListId === list.id && (!overCardId || !list.cards.some(card => card.id === overCardId)) && (
           (!list.cards.length || list.cards[list.cards.length - 1]?.id !== activeCardId || !list.cards.some(card => card.id === activeCardId)) && (
-            <div className="bg-muted border-2 border-dashed border-muted-foreground/10 rounded-md mb-2 min-h-[48px]" />
+            <div 
+              className="bg-muted border-2 border-dashed border-muted-foreground/10 rounded-md mb-2" 
+              style={{ height: activeCardHeight ? `${activeCardHeight}px` : '48px' }}
+            />
           )
         )}
 

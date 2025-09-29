@@ -33,10 +33,12 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
   const [activeCard, setActiveCard] = useState<Card | null>(null)
   const [activeList, setActiveList] = useState<ListWithCards | null>(null)
   const [activeListHeight, setActiveListHeight] = useState<number | undefined>(undefined)
+  const [activeCardHeight, setActiveCardHeight] = useState<number | undefined>(undefined)
   const [hoveredListId, setHoveredListId] = useState<string | null>(null)
   const [overCardId, setOverCardId] = useState<string | null>(null)
   const { socket } = useSocketContext()
   const listRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   // --- Для отката состояния при неудачном dnd ---
   const [prevLists, setPrevLists] = useState<ListWithCards[] | null>(null)
@@ -60,6 +62,10 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
     if (active.data.current?.type === "card") {
       setActiveCard(active.data.current.card)
       setPrevLists(lists)
+      // вычисляем высоту карточки
+      const node = cardRefs.current[active.id as string]
+      if (node) setActiveCardHeight(node.offsetHeight)
+      else setActiveCardHeight(undefined)
     }
     if (active.data.current?.type === "list") {
       setActiveList(active.data.current.list)
@@ -140,6 +146,7 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
     }
 
     setActiveCard(null)
+    setActiveCardHeight(undefined)
     setHoveredListId(null)
     setOverCardId(null)
     setActiveList(null)
@@ -371,10 +378,14 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
                   list={list}
                   boardId={boardId}
                   activeCardId={activeCard?.id}
+                  activeCardHeight={activeCardHeight}
                   hoveredListId={hoveredListId || undefined}
                   overCardId={overCardId || undefined}
                   onCardCreated={(card) => {
                     setLists(prev => prev.map(l => l.id === list.id ? { ...l, cards: [...l.cards, card] } : l))
+                  }}
+                  onCardRefChange={(cardId, ref) => {
+                    cardRefs.current[cardId] = ref
                   }}
                   isOverlay={false}
                   overlayHeight={undefined}
