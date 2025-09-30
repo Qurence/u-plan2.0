@@ -53,13 +53,22 @@ export default async function BoardPage({ params }: BoardPageProps) {
           order: "asc",
         },
       },
-      organization: true,
+      organization: {
+        include: {
+          members: {
+            where: { userId },
+          },
+        },
+      },
     },
   })
 
   if (!board) {
     redirect("/organization")
   }
+
+  // Проверяем, является ли пользователь админом
+  const isAdmin = board.organization.members.some((m) => m.role === "ADMIN")
 
   return (
     <div
@@ -69,7 +78,7 @@ export default async function BoardPage({ params }: BoardPageProps) {
       }}
     >
       <div className="absolute inset-0 bg-black/20" />
-      <BoardNavbar board={board} />
+      <BoardNavbar board={board} isAdmin={isAdmin} />
       <div className="relative pt-24">
         <BoardList boardId={board.id} lists={board.lists} />
       </div>

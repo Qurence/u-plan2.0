@@ -6,7 +6,8 @@ import { Sidebar } from "@/components/sidebar"
 import { SocketProvider } from "@/components/providers/socket-provider"
 import { ModalProvider } from "@/components/providers/modal-provider"
 import { QueryProvider } from "@/components/providers/query-provider"
-import CustomSessionProvider from "@/components/providers/session-provider";
+import CustomSessionProvider from "@/components/providers/session-provider"
+import { SidebarProvider } from "@/contexts/sidebar-context"
 
 export default function DashboardLayout({
   children,
@@ -17,13 +18,15 @@ export default function DashboardLayout({
     <CustomSessionProvider>
       <QueryProvider>
         <SocketProvider>
-          <div className="h-screen flex flex-col">
-            <div className="flex flex-1 overflow-hidden">
-              <Sidebar />
-              <main className="flex-1 overflow-y-auto">{children}</main>
+          <SidebarProvider>
+            <div className="h-screen flex flex-col">
+              <div className="flex flex-1 overflow-hidden">
+                <Sidebar />
+                <main className="flex-1 overflow-y-auto">{children}</main>
+              </div>
+              <ModalProvider />
             </div>
-            <ModalProvider />
-          </div>
+          </SidebarProvider>
         </SocketProvider>
       </QueryProvider>
     </CustomSessionProvider>

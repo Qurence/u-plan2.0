@@ -45,6 +45,7 @@ model Organization {
   members     OrganizationMember[]
   boards      Board[]
   tags        Tag[]
+  customRoles CustomRole[]
 
   @@map("organizations")
 }
@@ -56,8 +57,10 @@ model OrganizationMember {
   // Связи
   userId         String
   organizationId String
+  customRoleId   String?
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customRole     CustomRole?  @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -79,6 +82,7 @@ model Board {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   lists          List[]
   activities     Activity[]
+  allowedRoles   BoardRole[]
 
   @@map("boards")
 }
@@ -230,4 +234,33 @@ model CardTag {
 
   @@unique([cardId, tagId])
   @@map("card_tags")
+}
+
+model CustomRole {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   // Hex цвет
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Связи
+  organizationId String
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        OrganizationMember[]
+  boardRoles     BoardRole[]
+
+  @@map("custom_roles")
+}
+
+model BoardRole {
+  id     String @id @default(cuid())
+  boardId String
+  customRoleId String
+
+  // Связи
+  board      Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  customRole CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, customRoleId])
+  @@map("board_roles")
 }

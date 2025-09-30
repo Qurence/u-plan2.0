@@ -10,13 +10,14 @@ import { OrganizationSwitcher } from "@/components/organization/organization-swi
 import { UserButton } from "@/components/auth/user-button"
 import { Plus, Settings, Users, Tag, ChevronLeft, ChevronRight } from "lucide-react"
 import type { OrganizationWithMembers } from "@/types"
+import { useSidebar } from "@/contexts/sidebar-context"
 
 export const Sidebar = () => {
   const { data: session } = useSession()
   const pathname = usePathname()
   const [organizations, setOrganizations] = useState<OrganizationWithMembers[]>([])
   const [currentOrg, setCurrentOrg] = useState<OrganizationWithMembers | null>(null)
-  const [collapsed, setCollapsed] = useState(false)
+  const { collapsed, setCollapsed } = useSidebar()
 
   useEffect(() => {
     const fetchOrganizations = async () => {
