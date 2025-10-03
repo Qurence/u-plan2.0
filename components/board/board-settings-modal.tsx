@@ -101,9 +101,8 @@ export function BoardSettingsModal({ boardId, organizationId }: { boardId: strin
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="bg-white/90 hover:bg-white text-gray-900 border-white/50">
-          <Settings className="h-4 w-4 mr-2" />
-          Настройки доступа
+        <Button variant="default" size="sm" className="bg-white/0 text-white-900 hover:text-white">
+          <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">

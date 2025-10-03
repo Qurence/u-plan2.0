@@ -19,7 +19,7 @@ export const BoardNavbar = ({ board, isAdmin = false }: BoardNavbarProps) => {
   
   return (
     <div 
-      className="h-14 z-40 bg-black/50 fixed top-2 right-2 flex items-center px-6 gap-x-4 text-white transition-all duration-300"
+      className="h-14 z-40 bg-black/50 fixed top-2 right-2 rounded-lg flex items-center px-6 gap-x-4 text-white transition-all duration-300"
       style={{ left: collapsed ? '72px' : '264px' }}
     >
       <Link href={`/organization/${board.organizationId}`}>
