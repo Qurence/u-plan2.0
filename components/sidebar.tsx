@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { OrganizationSwitcher } from "@/components/organization/organization-switcher"
 import { UserButton } from "@/components/auth/user-button"
-import { Plus, Settings, Users, Tag, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Settings, Users, Tag, ChevronLeft, ChevronRight, LayoutDashboard } from "lucide-react"
 import type { OrganizationWithMembers } from "@/types"
 import { useSidebar } from "@/contexts/sidebar-context"
 
@@ -17,6 +17,7 @@ export const Sidebar = () => {
   const pathname = usePathname()
   const [organizations, setOrganizations] = useState<OrganizationWithMembers[]>([])
   const [currentOrg, setCurrentOrg] = useState<OrganizationWithMembers | null>(null)
+  const [boards, setBoards] = useState<any[]>([])
   const { collapsed, setCollapsed } = useSidebar()
 
   useEffect(() => {
@@ -77,6 +78,28 @@ export const Sidebar = () => {
     }
   }, [session, pathname])
 
+  // Загружаем доски для текущей организации
+  useEffect(() => {
+    const fetchBoards = async () => {
+      if (!currentOrg) {
+        setBoards([])
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/organizations/${currentOrg.id}/boards`)
+        if (response.ok) {
+          const data = await response.json()
+          setBoards(data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch boards:", error)
+      }
+    }
+
+    fetchBoards()
+  }, [currentOrg])
+
   if (!session) return null
 
   const toggleSidebar = () => {
@@ -126,10 +149,36 @@ export const Sidebar = () => {
           )}
         </div>
         <Separator />
+        
+        {/* Раздел Boards */}
+        {!collapsed && currentOrg && boards.length > 0 && (
+          <>
+            <div className="px-3 py-2">
+              <h3 className="mb-2 px-4 text-sm font-semibold tracking-tight text-muted-foreground">Boards</h3>
+              <div className="space-y-1">
+                {boards.map((board) => (
+                  <Button
+                    key={board.id}
+                    variant={pathname.includes(`/board/${board.id}`) ? "secondary" : "ghost"}
+                    className="w-full justify-start"
+                    asChild
+                  >
+                    <Link href={`/board/${board.id}`}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span className="truncate">{board.title}</span>
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <Separator />
+          </>
+        )}
+        
         <div className="px-3 py-2 flex-1">
           <div className="space-y-1">
             {!collapsed && (
-              <h3 className="mb-2 px-4 text-lg font-semibold tracking-tight">Workspace</h3>
+              <h3 className="mb-2 px-4 text-sm font-semibold tracking-tight text-muted-foreground">Workspace</h3>
             )}
             <div className="space-y-1">
               <Button
