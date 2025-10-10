@@ -66,8 +66,9 @@ export const Sidebar = () => {
           }
         }
         
-        // Если не нашли организацию по URL или URL не содержит ID организации
-        setCurrentOrg(data[0] || null)
+        // Если не нашли организацию по URL, сохраняем текущую или берем первую
+        // Не меняем организацию если она уже установлена
+        setCurrentOrg((prev) => prev || data[0] || null)
       } catch (error) {
         console.error("Failed to fetch organizations:", error)
       }
@@ -182,13 +183,13 @@ export const Sidebar = () => {
             )}
             <div className="space-y-1">
               <Button
-                variant={pathname.includes("/boards") ? "secondary" : "ghost"}
+                variant={pathname === "/organization" ? "secondary" : "ghost"}
                 className={`w-full ${collapsed ? 'justify-center px-0' : 'justify-start'}`}
                 asChild
               >
-                <Link href={currentOrg ? `/organization/${currentOrg.id}` : "/organization"}>
+                <Link href="/organization">
                   <Plus className={collapsed ? "h-4 w-4" : "mr-2 h-4 w-4"} />
-                  {!collapsed && "Boards"}
+                  {!collapsed && "Главная"}
                 </Link>
               </Button>
               <Button

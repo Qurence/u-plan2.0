@@ -21,11 +21,12 @@ model User {
   sessions      Session[]
 
   // Ваши связи
-  memberships   OrganizationMember[]
-  createdOrgs   Organization[]       @relation("OrganizationCreator")
-  cards         Card[]               @relation("CardAssignee")
-  comments      Comment[]
-  activities    Activity[]
+  memberships      OrganizationMember[]
+  createdOrgs      Organization[]       @relation("OrganizationCreator")
+  cards            Card[]               @relation("CardAssignee")
+  comments         Comment[]
+  activities       Activity[]
+  favoriteBoards   FavoriteBoard[]
 
   @@map("users")
 }
@@ -79,10 +80,11 @@ model Board {
 
   // Связи
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   lists          List[]
   activities     Activity[]
   allowedRoles   BoardRole[]
+  favoritedBy    FavoriteBoard[]
 
   @@map("boards")
 }
@@ -282,4 +284,18 @@ model CardImage {
   card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@map("card_images")
+}
+
+model FavoriteBoard {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Связи
+  userId  String
+  boardId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])
+  @@map("favorite_boards")
 }
