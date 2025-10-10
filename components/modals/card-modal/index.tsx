@@ -69,16 +69,33 @@ export const CardModal = () => {
       }
       return response.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
-      toast({ title: "Карточка обновлена" })
+    onMutate: async (newData) => {
+      // Отменяем текущие запросы
+      await queryClient.cancelQueries({ queryKey: ["card", cardId] })
+      
+      // Сохраняем предыдущее состояние
+      const previousCard = queryClient.getQueryData(["card", cardId])
+      
+      // Оптимистично обновляем кэш
+      queryClient.setQueryData(["card", cardId], (old: any) => ({
+        ...old,
+        ...newData,
+      }))
+      
+      return { previousCard }
     },
-    onError: (error: any) => {
+    onError: (error: any, newData, context: any) => {
+      // Откатываем изменения при ошибке
+      queryClient.setQueryData(["card", cardId], context.previousCard)
       toast({ 
         title: "Ошибка", 
         description: error.message || "Не удалось обновить карточку",
         variant: "destructive"
       })
+    },
+    onSettled: () => {
+      // Синхронизируем с сервером
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
     },
   })
 
@@ -181,16 +198,32 @@ export const CardModal = () => {
       }
       return response.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
-      toast({ title: "Тег добавлен к карточке" })
+    onMutate: async (tagId) => {
+      await queryClient.cancelQueries({ queryKey: ["card", cardId] })
+      const previousCard = queryClient.getQueryData(["card", cardId])
+      
+      // Находим тег из списка всех тегов
+      const tag = tags?.find((t: any) => t.id === tagId)
+      
+      if (tag) {
+        queryClient.setQueryData(["card", cardId], (old: any) => ({
+          ...old,
+          tags: [...(old.tags || []), { tag }],
+        }))
+      }
+      
+      return { previousCard }
     },
-    onError: (error: any) => {
+    onError: (error: any, tagId, context: any) => {
+      queryClient.setQueryData(["card", cardId], context.previousCard)
       toast({ 
         title: "Ошибка", 
         description: error.message || "Не удалось добавить тег к карточке",
         variant: "destructive"
       })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
     },
   })
 
@@ -206,16 +239,27 @@ export const CardModal = () => {
       }
       return response.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
-      toast({ title: "Тег удален с карточки" })
+    onMutate: async (tagId) => {
+      await queryClient.cancelQueries({ queryKey: ["card", cardId] })
+      const previousCard = queryClient.getQueryData(["card", cardId])
+      
+      queryClient.setQueryData(["card", cardId], (old: any) => ({
+        ...old,
+        tags: (old.tags || []).filter((ct: any) => ct.tag.id !== tagId),
+      }))
+      
+      return { previousCard }
     },
-    onError: (error: any) => {
+    onError: (error: any, tagId, context: any) => {
+      queryClient.setQueryData(["card", cardId], context.previousCard)
       toast({ 
         title: "Ошибка", 
         description: error.message || "Не удалось удалить тег с карточки",
         variant: "destructive"
       })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["card", cardId] })
     },
   })
 
