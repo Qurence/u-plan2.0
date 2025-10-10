@@ -39,7 +39,7 @@ interface CardImageGalleryProps {
   cardId: string
   images: CardImage[]
   onImageDeleted: () => void
-  onImagesReordered: () => void
+  onImagesReordered?: () => void
 }
 
 interface SortableImageProps {
@@ -113,7 +113,11 @@ const SortableImage = ({ image, onDelete, onClick, isDeleting }: SortableImagePr
 export const CardImageGallery = ({ cardId, images, onImageDeleted, onImagesReordered }: CardImageGalleryProps) => {
   const [selectedImage, setSelectedImage] = useState<CardImage | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [localImages, setLocalImages] = useState<CardImage[]>(images)
+  const [localImages, setLocalImages] = useState<CardImage[]>(() => 
+    [...images].sort((a, b) => a.order - b.order)
+  )
+  const [isDragging, setIsDragging] = useState(false)
+  const justReorderedRef = React.useRef(false)
   const { toast } = useToast()
 
   const sensors = useSensors(
@@ -123,14 +127,28 @@ export const CardImageGallery = ({ cardId, images, onImageDeleted, onImagesReord
     })
   )
 
+  // Обновляем локальные изображения только если не перетаскиваем и не только что переупорядочили
   React.useEffect(() => {
-    setLocalImages(images)
-  }, [images])
+    if (!isDragging && !justReorderedRef.current) {
+      const sortedImages = [...images].sort((a, b) => a.order - b.order)
+      setLocalImages(sortedImages)
+    }
+    
+    // Сбрасываем флаг после обновления
+    if (justReorderedRef.current) {
+      justReorderedRef.current = false
+    }
+  }, [images, isDragging])
+
+  const handleDragStart = () => {
+    setIsDragging(true)
+  }
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
     if (!over || active.id === over.id) {
+      setIsDragging(false)
       return
     }
 
@@ -159,7 +177,12 @@ export const CardImageGallery = ({ cardId, images, onImageDeleted, onImagesReord
         throw new Error("Failed to reorder images")
       }
 
-      onImagesReordered()
+      // Устанавливаем флаг что мы только что переупорядочили
+      // Это предотвратит перезапись localImages в useEffect
+      justReorderedRef.current = true
+      
+      // Сбрасываем флаг перетаскивания
+      setIsDragging(false)
     } catch (error) {
       console.error("Reorder error:", error)
       toast({
@@ -169,6 +192,7 @@ export const CardImageGallery = ({ cardId, images, onImageDeleted, onImagesReord
       })
       // Возвращаем старый порядок при ошибке
       setLocalImages(images)
+      setIsDragging(false)
     }
   }
 
@@ -217,6 +241,7 @@ export const CardImageGallery = ({ cardId, images, onImageDeleted, onImagesReord
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         <SortableContext

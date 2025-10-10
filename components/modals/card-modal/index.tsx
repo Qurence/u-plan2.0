@@ -533,7 +533,6 @@ export const CardModal = () => {
                 cardId={cardId!}
                 images={card?.images || []}
                 onImageDeleted={() => queryClient.invalidateQueries({ queryKey: ["card", cardId] })}
-                onImagesReordered={() => queryClient.invalidateQueries({ queryKey: ["card", cardId] })}
               />
               <CardImageUpload
                 cardId={cardId!}

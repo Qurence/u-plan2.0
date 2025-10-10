@@ -36,7 +36,7 @@ export async function GET(
         },
         images: {
           orderBy: {
-            createdAt: "asc",
+            order: "asc",
           },
         },
         list: {
@@ -144,6 +144,11 @@ export async function PATCH(
         tags: {
           include: {
             tag: true,
+          },
+        },
+        images: {
+          orderBy: {
+            order: "asc",
           },
         },
       },
