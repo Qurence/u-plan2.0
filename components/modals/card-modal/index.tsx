@@ -372,7 +372,7 @@ export const CardModal = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" hideCloseButton>
         <DialogHeader>
           <div className="flex items-start justify-between">
             {isEditingTitle ? (
@@ -643,26 +643,6 @@ export const CardModal = () => {
 
             {/* Комментарии */}
             <div className="space-y-4">
-              <h4 className="font-medium">Комментарии</h4>
-              <div className="space-y-3">
-                {card?.comments?.map((comment: any) => (
-                  <div key={comment.id} className="flex gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={comment.user.image || "/placeholder.svg"} />
-                      <AvatarFallback>{comment.user.name?.[0]?.toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{comment.user.name}</span>
-                        <span className="text-xs text-muted-foreground" suppressHydrationWarning>
-                          {format(new Date(comment.createdAt), "PPP")}
-                        </span>
-                      </div>
-                      <p className="text-sm">{comment.content}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
 
               {/* Добавить комментарий */}
               <div className="flex gap-3">
@@ -684,6 +664,27 @@ export const CardModal = () => {
                     {isAddingComment ? "Добавление..." : "Добавить комментарий"}
                   </Button>
                 </div>
+              </div>
+
+              <h4 className="font-medium">Комментарии</h4>
+              <div className="space-y-3">
+                {card?.comments?.map((comment: any) => (
+                  <div key={comment.id} className="flex gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={comment.user.image || "/placeholder.svg"} />
+                      <AvatarFallback>{comment.user.name?.[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{comment.user.name}</span>
+                        <span className="text-xs text-muted-foreground" suppressHydrationWarning>
+                          {format(new Date(comment.createdAt), "PPP")}
+                        </span>
+                      </div>
+                      <p className="text-sm">{comment.content}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
