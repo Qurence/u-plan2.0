@@ -169,11 +169,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Удаляем из ImageKit
-    try {
-      await imagekit.deleteFile(image.fileId)
-    } catch (error) {
-      console.error("ImageKit delete error:", error)
-      // Продолжаем даже если не удалось удалить из ImageKit
+    if (imagekit) {
+      try {
+        await imagekit.deleteFile(image.fileId)
+      } catch (error) {
+        console.error("ImageKit delete error:", error)
+        // Продолжаем даже если не удалось удалить из ImageKit
+      }
     }
 
     // Удаляем из БД
@@ -187,7 +189,7 @@ export async function DELETE(request: NextRequest) {
     })
 
     // Если изображений больше нет, удаляем папку в ImageKit
-    if (remainingImages === 0) {
+    if (remainingImages === 0 && imagekit) {
       try {
         await imagekit.deleteFolder(`/cards/${image.cardId}`)
       } catch (error) {

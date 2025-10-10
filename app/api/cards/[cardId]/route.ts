@@ -217,7 +217,7 @@ export async function DELETE(
     })
 
     // Удаляем файлы и папку из ImageKit
-    if (images.length > 0) {
+    if (images.length > 0 && imagekit) {
       try {
         // Удаляем все файлы
         for (const image of images) {
