@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { imagekit } from "@/lib/imagekit"
 
 export async function GET(
   request: NextRequest,
@@ -31,6 +32,11 @@ export async function GET(
         tags: {
           include: {
             tag: true,
+          },
+        },
+        images: {
+          orderBy: {
+            createdAt: "asc",
           },
         },
         list: {
@@ -194,10 +200,35 @@ export async function DELETE(
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Удаляем карточку
+    // Получаем все изображения карточки для удаления из ImageKit
+    const images = await db.cardImage.findMany({
+      where: { cardId: params.cardId },
+    })
+
+    // Удаляем карточку (каскадно удалятся и записи об изображениях)
     await db.card.delete({
       where: { id: params.cardId },
     })
+
+    // Удаляем файлы и папку из ImageKit
+    if (images.length > 0) {
+      try {
+        // Удаляем все файлы
+        for (const image of images) {
+          try {
+            await imagekit.deleteFile(image.fileId)
+          } catch (error) {
+            console.error(`Failed to delete file ${image.fileId}:`, error)
+          }
+        }
+        
+        // Удаляем папку карточки
+        await imagekit.deleteFolder(`/cards/${params.cardId}`)
+      } catch (error) {
+        console.error("ImageKit cleanup error:", error)
+        // Не критично, если не удалось очистить ImageKit
+      }
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

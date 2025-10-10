@@ -8,13 +8,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Calendar, MessageSquare, User, X, Tag, Plus, Edit2, Trash2 } from "lucide-react"
+import { Calendar, MessageSquare, User, X, Tag, Plus, Edit2, Trash2, Image as ImageIcon } from "lucide-react"
 import { useCardModal } from "@/hooks/use-card-modal"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { CardImageUpload } from "@/components/card-image-upload"
+import { CardImageGallery } from "@/components/card-image-gallery"
 
 export const CardModal = () => {
   const { isOpen, onClose, cardId } = useCardModal()
@@ -499,6 +501,23 @@ export const CardModal = () => {
                 </a>
               </div>
             )}
+
+            {/* Изображения */}
+            <div className="space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
+                Изображения
+              </h4>
+              <CardImageGallery
+                cardId={cardId!}
+                images={card?.images || []}
+                onImageDeleted={() => queryClient.invalidateQueries({ queryKey: ["card", cardId] })}
+              />
+              <CardImageUpload
+                cardId={cardId!}
+                onUploadSuccess={() => queryClient.invalidateQueries({ queryKey: ["card", cardId] })}
+              />
+            </div>
 
             {/* Описание */}
             <div className="space-y-2">

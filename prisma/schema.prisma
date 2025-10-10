@@ -114,11 +114,12 @@ model Card {
   // Связи
   listId     String
   assigneeId String?
-  list       List      @relation(fields: [listId], references: [id], onDelete: Cascade)
-  assignee   User?     @relation("CardAssignee", fields: [assigneeId], references: [id])
+  list       List        @relation(fields: [listId], references: [id], onDelete: Cascade)
+  assignee   User?       @relation("CardAssignee", fields: [assigneeId], references: [id])
   comments   Comment[]
   activities Activity[]
   tags       CardTag[]
+  images     CardImage[]
 
   @@map("cards")
 }
@@ -263,4 +264,20 @@ model BoardRole {
 
   @@unique([boardId, customRoleId])
   @@map("board_roles")
+}
+
+model CardImage {
+  id          String   @id @default(cuid())
+  fileId      String   // ImageKit file ID
+  url         String   // ImageKit URL
+  thumbnailUrl String? // URL миниатюры
+  name        String   // Имя файла
+  size        Int      // Размер в байтах
+  createdAt   DateTime @default(now())
+
+  // Связи
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@map("card_images")
 }
