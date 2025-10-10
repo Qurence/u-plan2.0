@@ -80,8 +80,8 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
   const handleDragOver = (event: DragOverEvent) => {
     const { over, active } = event
     
-    // Если карточка над корзиной, не обрабатываем другие зоны
-    if (active.data.current?.type === "card" && over?.id === 'trash-zone') {
+    // Если карточка или список над корзиной, не обрабатываем другие зоны
+    if ((active.data.current?.type === "card" || active.data.current?.type === "list") && over?.id === 'trash-zone') {
       setHoveredListId(null)
       setOverCardId(null)
       return
@@ -110,6 +110,41 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
     const { active, over } = event
     const cardId = active.data.current?.type === "card" ? (active.id as string) : undefined;
     const overId = over?.id as string | undefined;
+
+    // Проверяем, был ли список брошен в корзину
+    if (active.data.current?.type === "list" && over?.id === 'trash-zone') {
+      setActiveList(null)
+      setActiveListHeight(undefined)
+      
+      const listId = active.id as string
+      const listToDelete = lists.find(l => l.id === listId)
+      
+      if (listToDelete) {
+        const confirmed = confirm(`Вы уверены, что хотите удалить список "${listToDelete.title}" и все его карточки (${listToDelete.cards.length})?`)
+        if (!confirmed) {
+          setPrevLists(null)
+          return
+        }
+        
+        // Удаляем список из состояния
+        setLists(prev => prev.filter(l => l.id !== listId))
+        
+        // Удаляем список на сервере
+        try {
+          await fetch(`/api/boards/${boardId}/lists/${listId}`, {
+            method: "DELETE",
+          })
+          toast.success("Список удален")
+        } catch (error) {
+          console.error("Failed to delete list:", error)
+          toast.error("Не удалось удалить список")
+          // Откатываем изменения
+          if (prevLists) setLists(prevLists)
+        }
+      }
+      setPrevLists(null)
+      return
+    }
 
     // Проверяем, была ли карточка брошена в корзину
     if (active.data.current?.type === "card" && over?.id === 'trash-zone') {
@@ -387,6 +422,9 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
                   onCardRefChange={(cardId, ref) => {
                     cardRefs.current[cardId] = ref
                   }}
+                  onListDeleted={(listId) => {
+                    setLists(prev => prev.filter(l => l.id !== listId))
+                  }}
                   isOverlay={false}
                   overlayHeight={undefined}
                 />
@@ -417,8 +455,8 @@ export const BoardList = ({ boardId, lists: initialLists }: BoardListProps) => {
           </div>
         </div>
         
-        {/* Зона удаления - появляется только при перетаскивании карточки */}
-        {activeCard && <TrashZone />}
+        {/* Зона удаления - появляется при перетаскивании карточки или списка */}
+        {(activeCard || activeList) && <TrashZone />}
         
         <DragOverlay>
           {activeCard && <CardItem card={activeCard} />}

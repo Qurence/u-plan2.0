@@ -8,15 +8,23 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CardItem } from "./card-item"
-import { MoreHorizontal, Plus } from "lucide-react"
+import { MoreHorizontal, Plus, Trash2 } from "lucide-react"
 import { useAction } from "@/hooks/use-action"
 import { createCard } from "@/actions/create-card"
 import type { ListWithCards } from "@/types"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
 
 interface ListContainerProps {
   list: ListWithCards
   boardId: string
   onCardCreated?: (card: any) => void
+  onListDeleted?: (listId: string) => void
   activeCardId?: string
   activeCardHeight?: number
   hoveredListId?: string
@@ -26,9 +34,10 @@ interface ListContainerProps {
   onCardRefChange?: (cardId: string, ref: HTMLDivElement | null) => void
 }
 
-export const ListContainer = ({ list, boardId, onCardCreated, activeCardId, activeCardHeight, hoveredListId, overCardId, isOverlay, overlayHeight, onCardRefChange }: ListContainerProps) => {
+export const ListContainer = ({ list, boardId, onCardCreated, onListDeleted, activeCardId, activeCardHeight, hoveredListId, overCardId, isOverlay, overlayHeight, onCardRefChange }: ListContainerProps) => {
   const [isAddingCard, setIsAddingCard] = useState(false)
   const [cardTitle, setCardTitle] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
   const localRef = useRef<HTMLDivElement>(null)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -69,6 +78,33 @@ export const ListContainer = ({ list, boardId, onCardCreated, activeCardId, acti
     })
   }
 
+  const handleDeleteList = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isDeleting) return
+    
+    const confirmed = confirm(`Вы уверены, что хотите удалить список "${list.title}" и все его карточки?`)
+    if (!confirmed) return
+
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/boards/${boardId}/lists/${list.id}`, {
+        method: "DELETE",
+      })
+      
+      if (!res.ok) throw new Error("Не удалось удалить список")
+      
+      toast.success("Список удален")
+      if (onListDeleted) {
+        onListDeleted(list.id)
+      }
+    } catch (error: any) {
+      console.error("Failed to delete list:", error)
+      toast.error(error?.message || "Не удалось удалить список")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   if (isOverlay) {
     // Упрощённый вид для DragOverlay списка
     return (
@@ -105,9 +141,23 @@ export const ListContainer = ({ list, boardId, onCardCreated, activeCardId, acti
       <CardHeader {...listeners} className="px-3 py-2 cursor-grab rounded-t-md hover:bg-muted/80 transition mb-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-sm">{list.title}</h3>
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="sm" disabled={isDeleting}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={handleDeleteList}
+                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {isDeleting ? "Удаление..." : "Удалить список"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent className="px-3 pb-3 space-y-2">
