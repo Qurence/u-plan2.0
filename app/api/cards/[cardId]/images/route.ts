@@ -21,7 +21,7 @@ export async function GET(
 
     const images = await db.cardImage.findMany({
       where: { cardId },
-      orderBy: { createdAt: "asc" },
+      orderBy: { order: "asc" },
     })
 
     return NextResponse.json(images)
@@ -84,6 +84,13 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    // Получаем максимальный order для новой позиции
+    const maxOrder = await db.cardImage.findFirst({
+      where: { cardId },
+      orderBy: { order: "desc" },
+      select: { order: true },
+    })
+
     // Создаем запись об изображении
     const image = await db.cardImage.create({
       data: {
@@ -93,6 +100,7 @@ export async function POST(
         thumbnailUrl,
         name,
         size,
+        order: (maxOrder?.order ?? -1) + 1,
       },
     })
 

@@ -43,6 +43,11 @@ export default async function BoardPage({ params }: BoardPageProps) {
                   tag: true,
                 },
               },
+              images: {
+                orderBy: {
+                  order: "asc",
+                },
+              },
             },
             orderBy: {
               order: "asc",

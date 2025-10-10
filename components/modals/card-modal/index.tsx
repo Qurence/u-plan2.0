@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Calendar, MessageSquare, User, X, Tag, Plus, Edit2, Trash2, Image as ImageIcon } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { useCardModal } from "@/hooks/use-card-modal"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
@@ -504,14 +506,34 @@ export const CardModal = () => {
 
             {/* Изображения */}
             <div className="space-y-2">
-              <h4 className="font-medium flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
-                Изображения
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Изображения
+                </h4>
+                {card?.images && card.images.length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="showCover"
+                      checked={card?.showCover || false}
+                      onCheckedChange={(checked) => {
+                        updateCardMutation.mutate({ showCover: checked })
+                      }}
+                    />
+                    <Label
+                      htmlFor="showCover"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      Обложка
+                    </Label>
+                  </div>
+                )}
+              </div>
               <CardImageGallery
                 cardId={cardId!}
                 images={card?.images || []}
                 onImageDeleted={() => queryClient.invalidateQueries({ queryKey: ["card", cardId] })}
+                onImagesReordered={() => queryClient.invalidateQueries({ queryKey: ["card", cardId] })}
               />
               <CardImageUpload
                 cardId={cardId!}

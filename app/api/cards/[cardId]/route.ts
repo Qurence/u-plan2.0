@@ -89,7 +89,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, description, dueDate, assigneeId } = body
+    const { title, description, dueDate, assigneeId, showCover } = body
 
     // Проверяем доступ к карточке
     const card = await db.card.findUnique({
@@ -129,6 +129,7 @@ export async function PATCH(
         ...(description !== undefined && { description }),
         ...(dueDate && { dueDate: new Date(dueDate) }),
         ...(assigneeId !== undefined && { assigneeId }),
+        ...(showCover !== undefined && { showCover }),
       },
       include: {
         assignee: true,

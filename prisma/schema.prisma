@@ -108,6 +108,7 @@ model Card {
   description String?
   order       Int
   dueDate     DateTime?
+  showCover   Boolean  @default(false) // Показывать первое изображение как обложку
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -273,6 +274,7 @@ model CardImage {
   thumbnailUrl String? // URL миниатюры
   name        String   // Имя файла
   size        Int      // Размер в байтах
+  order       Int      @default(0) // Порядок отображения
   createdAt   DateTime @default(now())
 
   // Связи

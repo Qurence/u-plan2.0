@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import type { Card } from "@prisma/client"
@@ -16,6 +17,12 @@ interface CardItemProps {
         name: string
         color: string
       }
+    }>
+    images?: Array<{
+      id: string
+      url: string
+      thumbnailUrl?: string | null
+      order: number
     }>
   }
   isDragging?: boolean
@@ -44,16 +51,33 @@ export const CardItem = ({ card, isDragging }: CardItemProps) => {
     setTagsExpanded(!tagsExpanded)
   }
 
+  // Получаем первое изображение для обложки (отсортировано по order)
+  const coverImage = card.showCover && card.images && card.images.length > 0 
+    ? card.images.sort((a, b) => a.order - b.order)[0] 
+    : null
+
   return (
     <UICard
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`cursor-grab hover:shadow-md transition-shadow p-3 bg-white dark:bg-gray-800 ${isDragging ? 'opacity-50' : ''}`}
+      className={`cursor-grab hover:shadow-md transition-shadow ${coverImage ? 'p-0' : 'p-3'} bg-white dark:bg-gray-800 ${isDragging ? 'opacity-50' : ''} overflow-hidden`}
       onClick={() => cardModal.onOpen(card.id)}
     >
-      <div className="space-y-2">
+      {/* Обложка изображения */}
+      {coverImage && (
+        <div className="relative w-full h-32">
+          <Image
+            src={coverImage.thumbnailUrl || coverImage.url}
+            alt="Card cover"
+            fill
+            className="object-cover"
+          />
+        </div>
+      )}
+
+      <div className={`space-y-2 ${coverImage ? 'p-3' : ''}`}>
         {/* Теги - в самом верху */}
         {card.tags && card.tags.length > 0 && (
           <div 

@@ -2,10 +2,27 @@
 
 import React, { useState } from "react"
 import Image from "next/image"
-import { X, Loader2, ZoomIn } from "lucide-react"
+import { X, Loader2, ZoomIn, GripVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 interface CardImage {
   id: string
@@ -14,6 +31,7 @@ interface CardImage {
   thumbnailUrl?: string | null
   name: string
   size: number
+  order: number
   createdAt: string
 }
 
@@ -21,12 +39,138 @@ interface CardImageGalleryProps {
   cardId: string
   images: CardImage[]
   onImageDeleted: () => void
+  onImagesReordered: () => void
 }
 
-export const CardImageGallery = ({ cardId, images, onImageDeleted }: CardImageGalleryProps) => {
+interface SortableImageProps {
+  image: CardImage
+  onDelete: (id: string, e: React.MouseEvent) => void
+  onClick: () => void
+  isDeleting: boolean
+}
+
+const SortableImage = ({ image, onDelete, onClick, isDeleting }: SortableImageProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: image.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
+    >
+      <div onClick={onClick} className="w-full h-full">
+        <Image
+          src={image.thumbnailUrl || image.url}
+          alt={image.name}
+          fill
+          className="object-cover transition-transform group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+          <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </div>
+      
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute top-1 left-1 p-1 bg-black/50 rounded cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <GripVertical className="h-4 w-4 text-white" />
+      </div>
+
+      {/* Delete button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={(e) => onDelete(image.id, e)}
+        disabled={isDeleting}
+        className="absolute top-1 right-1 h-6 w-6 p-0 bg-black/50 hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        {isDeleting ? (
+          <Loader2 className="h-3 w-3 text-white animate-spin" />
+        ) : (
+          <X className="h-3 w-3 text-white" />
+        )}
+      </Button>
+    </div>
+  )
+}
+
+export const CardImageGallery = ({ cardId, images, onImageDeleted, onImagesReordered }: CardImageGalleryProps) => {
   const [selectedImage, setSelectedImage] = useState<CardImage | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [localImages, setLocalImages] = useState<CardImage[]>(images)
   const { toast } = useToast()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  React.useEffect(() => {
+    setLocalImages(images)
+  }, [images])
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) {
+      return
+    }
+
+    const oldIndex = localImages.findIndex((img) => img.id === active.id)
+    const newIndex = localImages.findIndex((img) => img.id === over.id)
+
+    const newImages = arrayMove(localImages, oldIndex, newIndex)
+    setLocalImages(newImages)
+
+    // Обновляем порядок на сервере
+    try {
+      const imageOrders = newImages.map((img, index) => ({
+        id: img.id,
+        order: index,
+      }))
+
+      const response = await fetch(`/api/cards/${cardId}/images/reorder`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ imageOrders }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to reorder images")
+      }
+
+      onImagesReordered()
+    } catch (error) {
+      console.error("Reorder error:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось изменить порядок изображений",
+        variant: "destructive",
+      })
+      // Возвращаем старый порядок при ошибке
+      setLocalImages(images)
+    }
+  }
 
   const handleDeleteImage = async (imageId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -64,44 +208,34 @@ export const CardImageGallery = ({ cardId, images, onImageDeleted }: CardImageGa
     }
   }
 
-  if (images.length === 0) {
+  if (localImages.length === 0) {
     return null
   }
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {images.map((image) => (
-          <div
-            key={image.id}
-            className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
-            onClick={() => setSelectedImage(image)}
-          >
-            <Image
-              src={image.thumbnailUrl || image.url}
-              alt={image.name}
-              fill
-              className="object-cover transition-transform group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-              <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => handleDeleteImage(image.id, e)}
-              disabled={deletingId === image.id}
-              className="absolute top-1 right-1 h-6 w-6 p-0 bg-black/50 hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              {deletingId === image.id ? (
-                <Loader2 className="h-3 w-3 text-white animate-spin" />
-              ) : (
-                <X className="h-3 w-3 text-white" />
-              )}
-            </Button>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={localImages.map((img) => img.id)}
+          strategy={rectSortingStrategy}
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {localImages.map((image) => (
+              <SortableImage
+                key={image.id}
+                image={image}
+                onDelete={handleDeleteImage}
+                onClick={() => setSelectedImage(image)}
+                isDeleting={deletingId === image.id}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Модальное окно для просмотра изображения */}
       <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
