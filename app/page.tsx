@@ -7,6 +7,7 @@ import Link from "next/link"
 import { ArrowRight, CheckCircle, Users, Zap } from "lucide-react"
 import { db } from "@/lib/db"
 import { SignInButton } from "@/components/auth/sign-in-button"
+import Spline from '@splinetool/react-spline/next'
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions)
@@ -17,9 +18,16 @@ export default async function HomePage() {
   // }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen relative">
+      {/* Spline Background - Full Page */}
+      <div className="fixed inset-0 w-full h-full z-0">
+        <Spline
+          scene="./scene.splinecode"
+        />
+      </div>
+
       {/* Header */}
-      <header className="px-4 lg:px-6 h-14 flex items-center border-b">
+      <header className="px-4 lg:px-6 h-14 flex items-center border-b relative z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
         <Link className="flex items-center justify-center" href="/">
           <span className="text-2xl font-bold">U-Plan</span>
         </Link>
@@ -31,8 +39,8 @@ export default async function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="container px-4 md:px-6">
+      <section className="w-full h-screen relative z-10">
+        <div className="container px-4 md:px-6 h-full flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4 text-center">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
@@ -52,8 +60,13 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Spacer sections for scrolling */}
+      <section className="w-full h-screen relative z-10"></section>
+      <section className="w-full h-screen relative z-10"></section>
+      <section className="w-full h-screen relative z-10"></section>
+
       {/* Features Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32">
+      {/* <section className="w-full py-12 md:py-24 lg:py-32 relative z-10 bg-white dark:bg-gray-950">
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-3 lg:gap-12">
             <Card>
@@ -92,10 +105,10 @@ export default async function HomePage() {
             </Card>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Footer */}
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t relative z-10 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm">
         <p className="text-xs text-gray-500 dark:text-gray-400">© 2024 U-Plan. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link className="text-xs hover:underline underline-offset-4" href="#">
