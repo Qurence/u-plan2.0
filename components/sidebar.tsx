@@ -187,7 +187,7 @@ export const Sidebar = () => {
                 className={`w-full ${collapsed ? 'justify-center px-0' : 'justify-start'}`}
                 asChild
               >
-                <Link href="/organization">
+                <Link href={currentOrg ? `/organization/${currentOrg.id}` : "/organization"}>
                   <Plus className={collapsed ? "h-4 w-4" : "mr-2 h-4 w-4"} />
                   {!collapsed && "Главная"}
                 </Link>
