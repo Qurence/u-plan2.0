@@ -3,6 +3,9 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'U-Plan',
+  icons: {
+    icon: '/icon.ico',
+  },
 }
 
 export default function RootLayout({
